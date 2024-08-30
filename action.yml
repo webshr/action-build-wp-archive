@@ -1,0 +1,57 @@
+name: 'Build WordPress Archive'
+description: 'Build a zip archive of your WordPress plugin & theme using GitHub Actions'
+author: 'webshr'
+branding:
+  icon: 'archive'
+  color: 'blue'
+inputs:
+  node-version:
+    description: 'Node version'
+    required: false
+    default: 18
+  install-composer:
+    description: 'Install Composer?'
+    required: true
+    default: false
+  npm-run-build:
+    description: 'Run `npm run build`?'
+    required: true
+    default: false
+  retention-days:
+    description: 'Number of days to retain the artifact'
+    required: false
+    default: 30
+  archive-name:
+    description: 'Name of the zip archive'
+    required: false
+    default: ${{ github.event.repository.name }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      id: node-setup
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Generate zip archive
+      id: generate-archive
+      run: ${{ github.action_path }}/build.sh
+      shell: bash
+      env:
+        INSTALL_COMPOSER: ${{ inputs.install-composer }}
+        NPM_RUN_BUILD: ${{ inputs.npm-run-build }}
+        ARCHIVE_NAME: ${{ inputs.archive-name }}
+
+    - name: Unzip the archive (prevents double zip problem)
+      id: unzip-archive
+      run: unzip -q ${{ inputs.archive-name }}.zip -d dist-archive
+      shell: bash
+
+    - name: Upload the archive as an artifact
+      id: upload-archive-artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.archive-name }}
+        path: dist-archive
+        retention-days: ${{ inputs.retention-days }}
